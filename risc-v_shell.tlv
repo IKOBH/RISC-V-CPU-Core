@@ -44,9 +44,11 @@
    $reset = *reset;
    
    $pc[31:0] = >>1$next_pc;
-   $next_pc[31:0] = 
+   
+   $next_pc[31:0] =
       $reset ? 32'b0 :
-               $pc + 1;
+      $taken_br ? $br_tgt_pc :
+                  $pc + 1;
    
    `READONLY_MEM($pc, $$instr[31:0]);
    
@@ -94,20 +96,34 @@
    $is_bgeu = $dec_bits ==? 11'bx_111_1100011;
    $is_addi = $dec_bits ==? 11'bx_000_0010011;
    $is_add = $dec_bits ==? 11'b0_000_0110011;
-   
+
    m4+rf(32, 32, $reset, $rd_valid, $rd, $result, $rs1_valid, $rs1, $src1_value, $rs2_valid, $rs2, $src2_value)
-   
+
    // ALU
    $result[31:0] =
     $is_addi ? $src1_value + $imm :
     $is_add ? $src1_value + $src2_value :
     32'b0;
 
+
+   // Branch Logic: Should we branch?
+   $taken_br =
+    ($is_beq && $src1_value == $src2_value) ? 1'b1 :
+    ($is_bne && $src1_value != $src2_value) ? 1'b1 :
+    ($is_blt && ($src1_value < $src2_value)) ^ ($src1_value[31] != $src2_value[31]) ? 1'b1 :
+    ($is_bge && ($src1_value >= $src2_value)) ^ ($src1_value[31] != $src2_value[31]) ? 1'b1 :
+    ($is_bltu && $src1_value < $src2_value) ? 1'b1 :
+    ($is_bgeu && $src1_value >= $src2_value) ? 1'b1 :
+                                             1'b0;
+   
+   // Branch Logic: Target PC
+   $br_tgt_pc[31:0] = $pc + $imm;
+   
    `BOGUS_USE($opcode $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm $imm_valid $funct3 $funct3_valid)
    `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_addi $is_add)
 
    // Assert these to end simulation (before Makerchip cycle limit).
-   *passed = 1'b0;
+   m4+tb()
    *failed = *cyc_cnt > M4_MAX_CYC;
    
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
