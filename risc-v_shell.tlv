@@ -78,10 +78,8 @@
    $rs2[4:0] = $instr[24:20];
    
    $rd_valid = ($rd != 5'b0) && ($is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr);
-   $funct3_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
    $rs1_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
    $rs2_valid = $is_r_instr || $is_s_instr || $is_b_instr;
-   $imm_valid = $is_i_instr || $is_s_instr || $is_b_instr || $is_u_instr || $is_j_instr;
    
    $imm[31:0] = $is_i_instr ? {  {21{$instr[31]}},  $instr[30:20]  } :
                 $is_s_instr ? {  {21{$instr[31]}},  $instr[30:25]  ,  $instr[11:7]  } :
@@ -90,7 +88,7 @@
                 $is_j_instr ? {  {12{$instr[31]}},  $instr[19:12]  ,  $instr[20]  ,  $instr[30:21]  ,1'b0   } :
                               32'b0;  // Default 
    
-   $dec_bits[10:0] = {$instr[30],$funct3,$opcode};
+   $dec_bits[10:0] = {$instr[30], $funct3 ,$opcode};
    
    $is_lui = $dec_bits ==? 11'bx_xxx_0110111;
    $is_auipc = $dec_bits ==? 11'bx_xxx_0010111;
@@ -190,10 +188,6 @@
    m4+dmem(32, 32, $reset, $result[4:0], $is_s_instr, $src2_value[31:0], $is_load, $ld_data)
    
    $rfl_wr_data[31:0] = $is_load ? $ld_data : $result;
-   
-   
-   `BOGUS_USE($opcode $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm $imm_valid $funct3 $funct3_valid)
-   `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_addi $is_add)
 
    // Assert these to end simulation (before Makerchip cycle limit).
    m4+tb()
