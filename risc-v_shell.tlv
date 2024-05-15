@@ -125,7 +125,7 @@
    //Our implementation will treat all loads and all stores the same, so assign $is_load based on opcode only
    $is_load = $dec_bits ==? 11'bx_xxx_0000011;
 
-   m4+rf(32, 32, $reset, $rd_valid, $rd, $result, $rs1_valid, $rs1, $src1_value, $rs2_valid, $rs2, $src2_value)
+   m4+rf(32, 32, $reset, $rd_valid, $rd, $rfl_wr_data, $rs1_valid, $rs1, $src1_value, $rs2_valid, $rs2, $src2_value)
 
    // ALU
    // ALU: SLTU and SLTI (set if less than, unsigned) results:
@@ -167,6 +167,7 @@
      $is_sra ? $sra_rslt[31:0]:
      $is_or ? $src1_value | $src2_value:
      $is_and ? $src1_value & $src2_value:
+     $is_load || $is_s_instr ? ($src1_value + $imm)/4: // Divide by 4 since each instrction is 4 bytes & the address is byte aligned.
                32'b0;
 
    // Branch Logic: Should we branch?
@@ -185,6 +186,12 @@
    // Jump logic: Target PC
    $jalr_tgt_pc[31:0] = $src1_value + $imm;
    
+   //Memory
+   m4+dmem(32, 32, $reset, $result[4:0], $is_s_instr, $src2_value[31:0], $is_load, $ld_data)
+   
+   $rfl_wr_data[31:0] = $is_load ? $ld_data : $result;
+   
+   
    `BOGUS_USE($opcode $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm $imm_valid $funct3 $funct3_valid)
    `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_addi $is_add)
 
@@ -192,7 +199,6 @@
    m4+tb()
    *failed = *cyc_cnt > M4_MAX_CYC;
    
-   //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
    m4+cpu_viz()
 \SV
    endmodule
